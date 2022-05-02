@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="zh-CN" style="height: 100%;">
+<head>
+    <meta charset="UTF-8">
+    <title></title>
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css">
+    <script src="https://unpkg.com/element-ui/lib/index.js"></script>
+    <script src="https://unpkg.com/vue-router/dist/vue-router.js"></script>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <style>
+        .login-page {
+            -webkit-border-radius: 5px;
+            border-radius: 5px;
+            margin: 180px auto;
+            width: 350px;
+            padding: 35px 35px 15px;
+            background: #fff;
+            border: 1px solid #eaeaea;
+            box-shadow: 0 0 25px #cac6c6;
+        }
+    </style>
+</head>
+<body style="background: #eeeeee">
+    <div id="app">
+        <div style="width: 100%">
+            <el-form :model="l_form" :rules="l_rules" status-icon ref="ruleForm2" class="demo-ruleForm login-page">
+                <div style="margin:5px"><span style="font-family:Charcoal,fantasy;font-size: 30px">易客</span>进销存管理系统</div>
+                <el-form-item prop="username">
+                    <el-input type="text" v-model="l_form.username" auto-complete="off" placeholder="用户名"></el-input>
+                </el-form-item>
+                <el-form-item prop="password">
+                    <el-input type="password" v-model="l_form.password" auto-complete="off" placeholder="密码"></el-input>
+                </el-form-item>
+                <el-form-item style="width:100%;">
+                    <el-button type="primary" style="width:100%;" @click="log_in()" :loading="logining">登录</el-button>
+                </el-form-item>
+            </el-form>
+        </div>
+    </div>
+    <script>
+        var app = new Vue ({
+            el:"#app",
+            data(){
+                return {
+                    logining: false,
+                    l_form: {
+                        username: '',
+                        password: '',
+                    },
+                    l_rules: {
+                        username: [{required: true, message: '未输入用户名！', trigger: 'blur'}],
+                        password: [{required: true, message: '未输入密码！', trigger: 'blur'}]
+                    },
+                }
+            },
+            methods: {
+                log_in(){
+                    var that=this;
+                    this.logining=true;
+                    axios({
+                        method: 'post',
+                        url: '/userManagement/login',
+                        data: {
+                            username: that.l_form.username,
+                            password: that.l_form.password,
+                        }
+                    })
+                        .then(function (response) {
+                            if (response.data === "fail") {
+                                alert("用户名或密码输入错误，请联系管理员。");
+                                that.logining=false;
+                            }
+                            else {
+                                alert("登录成功！");
+                                console.log(response.data);
+                                sessionStorage.setItem("username",response.data["username"]);
+                                sessionStorage.setItem("eno",response.data["eno"]);
+                                sessionStorage.setItem("title",response.data["title"]);
+                                setTimeout(function(){window.location.assign("./main.html")},1000);
+                            }
+                        })
+                        .catch(function (error) {
+                            alert(error);
+                        });
+                }
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,22 @@
+spring:
+  datasource:
+    username: tester
+    password: tester
+    url: jdbc:mysql://localhost:3306/dbdesign
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  devtools:
+    restart:
+      enabled: true
+      additional-paths: src/main/java
+    livereload:
+      enabled: true
+  freemarker:
+    cache: false
+logging:
+  level:
+    root: info
+    com.example: debug
+    org.springframework.security: warn
+file:
+  uploadFolder: "C:/Users/lenovo/Desktop/works/yikeerp/target/classes/static/upload/"
+  staticAccessPath: "/upload/**"

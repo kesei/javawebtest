@@ -1,0 +1,2427 @@
+<!DOCTYPE html>
+<html lang="zh-CN" style="height: 100%;">
+<head>
+    <meta charset="UTF-8">
+    <title></title>
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css">
+    <script src="https://unpkg.com/element-ui/lib/index.js"></script>
+    <script src="https://unpkg.com/vue-router/dist/vue-router.js"></script>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <style>
+        .el-carousel__item h3 {
+            color: #475669;
+            font-size: 14px;
+            opacity: 0.75;
+            line-height: 150px;
+            margin: 0;
+        }
+        .el-carousel__item:nth-child(n){
+            text-align: center;
+            background-color: #b6d8f1;
+        }
+    </style>
+    <script>
+        if (document.referrer==='')
+            window.location.assign("http://yikeerp.io/login.html");
+    </script>
+</head>
+<body style="height: 100%;margin: 0">
+    <div id="app" style="height: 100%">
+        <el-container style="border: 1px solid #eee;height: 100%">
+            <el-header style="width: 100%;height: 50px;background-color: #409eff">
+                <p style="margin:5px"><span style="font-family:Charcoal,fantasy;font-size: 30px">易客</span>进销存管理系统</p>
+            </el-header>
+            <el-container>
+                <el-aside width="200px">
+                    <el-menu style="height:100%" :router="true">
+                        <el-menu-item index="/general_view">概览</el-menu-item>
+                        <el-submenu index="1">
+                            <template slot="title">信息管理</template>
+                            <el-menu-item-group>
+                                <el-menu-item index="supplier_info">供货商信息管理</el-menu-item>
+                                <el-menu-item index="goods_info">商品信息管理</el-menu-item>
+                                <el-menu-item index="customer_info">会员信息管理</el-menu-item>
+                                <el-menu-item v-if='title==="店长"||title==="副店长"' index="employee_info">店员信息管理</el-menu-item>
+                            </el-menu-item-group>
+                        </el-submenu>
+                        <el-submenu index="2">
+                            <template slot="title">库存管理</template>
+                            <el-menu-item-group>
+                                <el-menu-item index="inventory_info">库存管理</el-menu-item>
+                            </el-menu-item-group>
+                        </el-submenu>
+                        <el-submenu index="3">
+                            <template slot="title">销售状态</template>
+                            <el-menu-item-group>
+                                <el-menu-item index="shelf_info">在售商品</el-menu-item>
+                                <el-menu-item index="SR_info">销售情况</el-menu-item>
+                            </el-menu-item-group>
+                        </el-submenu>
+                        <record_list v-if='title==="店长"||title==="副店长"'></record_list>
+                        <el-menu-item index="/storage">存储空间</el-menu-item>
+                    </el-menu>
+                </el-aside>
+                <router-view></router-view>
+            </el-container>
+        </el-container>
+    </div>
+    <script>
+        var poster = Vue.component('poster',{
+            data(){
+                let content=[
+                    {title:"示例公告一号",context:"示例公告一号内容",dialogVisible:false},
+                    {title:"示例公告二号",context:"示例公告二号内容",dialogVisible:false}
+                ]
+                return{
+                    content:content
+                }
+            },
+            template:"<div class='block'><el-carousel trigger='click' height='150px'><el-carousel-item v-for='(item,index) in content' :key='index'><h3 class='small' @click='content[index].dialogVisible=true'>{{item.title}}</h3></el-carousel-item></el-carousel><el-dialog v-for='(item,index) in content' :key='index' :title='item.title' :visible.sync='item.dialogVisible' width='50%'><span>{{item.context}}</span></el-dialog></div>"
+        })
+        var ware_general = Vue.component('ware_general',{
+            data(){
+                return{
+                    ware_content:[]
+                }
+            },
+            created() {
+                var that = this;
+                axios({
+                    method: 'post',
+                    url: '/warehouseManagement/generalView',
+                    data: {
+                        type:"warehouse"
+                    }
+                })
+                    .then(function (response) {
+                        if (response.data != null) {
+                            var data=response.data;
+                            for(var i=0;i<data.length;i++){
+                                switch (data[i]['WStatus']){
+                                    case "空闲":data[i]['percentage'] = 25;data[i]['status'] = "success";break;
+                                    case "可用":data[i]['percentage'] = 50;data[i]['status'] = "success";break;
+                                    case "拥挤":data[i]['percentage'] = 75;data[i]['status'] = "warning";break;
+                                    case "已满":data[i]['percentage'] = 100;data[i]['status'] = "warning";break;
+                                    case "禁用":data[i]['percentage'] = 100;data[i]['status'] = "exception";break;
+                                }
+                            }
+                            that.ware_content= data;
+                        }
+                        else
+                            console.log("加载失败");
+                    })
+                    .catch(function (error) {
+                        alert(error);
+                    });
+            },
+            template:"<div style='border:3px solid #b6d8f1;border-radius: 8px;padding: 20px;max-width: 400px '><h2 style='margin-top: 0;margin-bottom: 10px'>仓库容量</h2><div style='display: block' v-for='(item,index) in ware_content'>{{item.WName}}<el-progress :key='index' :percentage='item.percentage' :status='item.status'></el-progress></div></div>"
+        })
+        var general_view = Vue.component('general_view',{
+            template:"<el-main><el-row><poster></poster></el-row><h1>实时数据概览</h1><el-container><el-aside style='width:50%''><ware_general></ware_general></el-aside></el-container></el-main>"
+        })
+        var searchbar = Vue.component('searchbar',{
+            props:['searchList','default_search'],
+            data:function(){
+                return{
+                    info:this.searchList,
+                    text:this.default_search,
+                    textarea:""
+                }
+            },
+            methods:{
+                change(content){
+                    this.text=content;
+                },
+                search(){
+                    let context=[this.text,this.textarea]
+                    this.$emit('search',context);
+                }
+            },
+            template:"<div style='display:flex;float: left'><el-dropdown><el-button>{{text}}<i class='el-icon-arrow-down el-icon--right'></i></el-button><el-dropdown-menu slot='dropdown'><el-dropdown-item @click.native='change(item)' v-for='item in info' :key='item'>{{item}}</el-dropdown-item></el-dropdown-menu></el-dropdown><el-input style='width:500px' v-model='textarea' @change='search'></el-input></div>"
+        })
+        var paginationbar =Vue.component('paginationbar',{
+            props:['total','pagesize','currentpage'],
+            data:function (){
+                return{
+                    num:this.total,
+                    size:this.pagesize,
+                    current:this.currentpage
+                }
+            },
+            methods:{
+                change(pageNumber){
+                    console.log(pageNumber);
+                    this.current=pageNumber;
+                    this.$emit('pageChange',pageNumber);
+                }
+            },
+            template:"<div style='display:flex;margin: 0 auto;'><el-pagination background layout=\"prev, pager, next\" :total=\"total\" @current-change='change'></el-pagination></div>"
+        })
+        var as_btn_group = Vue.component('as_btn_group',{
+            props:['table_type'],
+            template:"<div style='display: flex;float: right'><el-button type='primary' @click='$emit(\"add\")'>新增</el-button><el-button type='primary' @click='$emit(\"sub\")'>删除</el-button></div>"
+        })
+        var ats_btn_group = Vue.component('ats_btn_group',{
+            props:['table_type'],
+            template:"<div style='display: flex;float: right'><el-button type='primary' @click='$emit(\"in\")'>入库</el-button><el-button type='primary' @click='$emit(\"trans\")'>转库</el-button><el-button type='primary' @click='$emit(\"out\")'>出库</el-button></div>"
+        })
+        var s_btn_group = Vue.component('s_btn_group',{
+            props:['table_type'],
+            template:"<div style='display: flex;float: right'><el-button type='primary' @click='$emit(\"sub\")'>销售登记</el-button></div>"
+        })
+        var supplier_info = Vue.component('supplier_info',{
+            data(){
+                return{
+                    fullData:[],
+                    tableData:[],
+                    table_type:"supplier",
+                    add_Visible:false,
+                    add_No:"",
+                    add_Name:"",
+                    sub_Visible:false,
+                    sub_No:[],
+                    mod_Visible:false,
+                    old_mod_No:"",
+                    mod_No:"",
+                    mod_Name:"",
+                    searchlist:['供货商编号','供货商名称'],
+                    default_search:"供货商编号",
+                    total:0,
+                    pagesize:10,
+                    currentpage:1
+                }
+            },
+            methods:{
+                init(){
+                    var that = this;
+                    axios({
+                        method: 'post',
+                        url: '/supplierManagement/init',
+                    })
+                        .then(function (response) {
+                            if (response.data != null) {
+                                that.total=response.data;
+                            }
+                            else
+                                console.log("加载失败");
+                        })
+                        .catch(function (error) {
+                            alert(error);
+                        });
+                    this.view();
+                },
+                view(){
+                    var that = this;
+                    axios({
+                        method: 'post',
+                        url: '/supplierManagement/view',
+                        data:{
+                            limit:10,
+                            offset:(that.currentpage-1)*10
+                        }
+                    })
+                        .then(function (response) {
+                            if (response.data != null) {
+                                that.tableData= response.data;
+                            }
+                            else
+                                console.log("加载失败");
+                        })
+                        .catch(function (error) {
+                            alert(error);
+                        });
+                },
+                open_add(){
+                    this.add_Visible=true;
+                },
+                add(){
+                    let tag=true;
+                    if(this.add_No.length!==10||this.add_Name<1) {
+                        alert("格式错误！");
+                        tag=false;
+                    }
+                    var that=this;
+                    if(tag) {
+                        axios({
+                            method: 'post',
+                            url: '/supplierManagement/add',
+                            data: {
+                                sno: that.add_No,
+                                sname: that.add_Name
+                            }
+                        })
+                            .then(function (response) {
+                                if (response.data === true) {
+                                    that.view();
+                                } else
+                                    console.log(response.data);
+                            })
+                            .catch(function (error) {
+                                alert(error);
+                            });
+                    }
+                },
+                sublist(event){
+                    let i;
+                    var that = this;
+                    this.sub_No=[];
+                    for(i=0;i<event.length;i++){
+                        that.sub_No.push(event[i]["SNo"]);
+                    }
+                },
+                sub(){
+                    var that=this;
+                    axios({
+                        method: 'post',
+                        url: '/supplierManagement/sub',
+                        data: {
+                            list:that.sub_No,
+                            length:that.sub_No.length
+                        }
+                    })
+                        .then(function (response) {
+                            if (response.data===true) {
+                                that.view();
+                            }
+                            else
+                                console.log(response.data);
+                        })
+                        .catch(function (error) {
+                            alert(error);
+                        });
+                    this.view();
+                },
+                mod_init(event){
+                    this.old_mod_No=event["SNo"];
+                    this.mod_No=event["SNo"];
+                    this.mod_Name=event["SName"];
+                    this.mod_Visible=true;
+                },
+                mod(){
+                    let tag=true;
+                    if(this.mod_No.length!==10||this.mod_Name<1) {
+                        alert("格式错误！");
+                        tag=false;
+                    }
+                    var that=this;
+                    if(tag) {
+                        axios({
+                            method: 'post',
+                            url: '/supplierManagement/mod',
+                            data: {
+                                target: that.old_mod_No,
+                                sno: that.mod_No,
+                                sname: that.mod_Name
+                            }
+                        })
+                            .then(function (response) {
+                                if (response.data === true) {
+                                    that.view();
+                                } else
+                                    console.log(response.data);
+                            })
+                            .catch(function (error) {
+                                alert(error);
+                            });
+                    }
+                },
+                search(val){
+                    let stype=val[0];
+                    let stext=val[1];
+                    let tag=1;
+                    if(stext===""){
+                        that.view();
+                        tag=0;
+                    }
+                    if(tag) {
+                        var that = this;
+                        axios({
+                            method: 'post',
+                            url: '/supplierManagement/search',
+                            data: {
+                                stype: stype,
+                                stext: stext,
+                                limit:10,
+                                offset:(that.currentpage-1)*10
+                            }
+                        })
+                            .then(function (response) {
+                                if (response.data !== null && response.data !== "") {
+                                    that.tableData = response.data;
+                                    that.total=response.data.length;
+                                } else {
+                                    that.tableData = [];
+                                    console.log("加载失败");
+                                }
+                            })
+                            .catch(function (error) {
+                                alert(error);
+                            });
+                    }
+                },
+                pageChange(pageNumber){
+                    this.currentpage=pageNumber;
+                    this.view();
+                },
+                checkbox_select(row, column, event){
+                    this.$refs.table.toggleRowSelection(row);
+                }
+            },
+            created() {
+                this.init();
+                this.view();
+            },
+            template:"<el-main><div><searchbar :search-list='searchlist' :default_search='default_search' @search='search'>" +
+                "</searchbar><as_btn_group :table_type='table_type' @add='open_add()' @sub='sub_Visible=true'></as_btn_group>" +
+                "</div><el-table ref='table' :data='tableData' @selection-change='sublist($event)' @row-click='checkbox_select' @row-dblclick='mod_init($event)'>" +
+                "<el-table-column type='selection' ></el-table-column><el-table-column prop='SNo' label='供货商编号'>" +
+                "</el-table-column><el-table-column prop='SName' label='供货商名称'></el-table-column></el-table>" +
+                "<paginationbar :total='total' :pagesize='pagesize' :currentpage='currentpage' @pageChange='pageChange'></paginationbar>"+
+                "<el-dialog :visible.sync='sub_Visible'>确认要删除吗？<span slot='footer' class='dialog-footer'>" +
+                "<el-button @click='sub_Visible = false'>取消</el-button><el-button type='primary' @click='sub_Visible = false,sub()'>确定</el-button>" +
+                "</span></el-dialog><el-dialog title='新增供货商' :visible.sync='add_Visible'>" +
+                "<el-input v-model='add_No' minlength='10' maxlength='10'><template slot='prepend'>供货商编号：</template></el-input>" +
+                "<el-input v-model='add_Name' minlength='1' maxlength='20'><template slot='prepend'>供货商名称：</template></el-input>" +
+                "<span slot='footer' class='dialog-footer'><el-button @click='add_Visible = false'>取消</el-button>" +
+                "<el-button type='primary' @click='add_Visible = false,add()'>确定</el-button></span>" +
+                "</el-dialog><el-dialog title='详细信息/编辑' :visible.sync='mod_Visible'><el-input v-model='mod_No' minlength='10' maxlength='10'>" +
+                "<template slot='prepend'>供货商编号：</template></el-input><el-input v-model='mod_Name' minlength='1' maxlength='20'>" +
+                "<template slot='prepend'>供货商名称：</template></el-input><span slot='footer' class='dialog-footer'>" +
+                "<el-button @click='mod_Visible = false'>取消</el-button><el-button type='primary' @click='mod_Visible = false,mod()'>确定</el-button></span></el-dialog></el-main>"
+        })
+        var goods_info = Vue.component('goods_info',{
+            data(){
+                return{
+                    fullData:[],
+                    tableData:[],
+                    table_type:"goods",
+                    add_Visible:false,
+                    add_No:"",
+                    add_Name:"",
+                    add_FC:"",
+                    add_SC:"",
+                    add_MC:"",
+                    add_Unit:"",
+                    add_Price:"",
+                    sub_Visible:false,
+                    sub_No:[],
+                    mod_Visible:false,
+                    old_mod_No:"",
+                    mod_No:"",
+                    mod_Name:"",
+                    mod_FC:"",
+                    mod_SC:"",
+                    mod_MC:"",
+                    mod_Unit:"",
+                    mod_Price:"",
+                    searchlist:['商品条码','商品名称'],
+                    default_search:"商品条码",
+                    columnlist:[
+                        {en:'GNo',cn:'商品条码'},
+                        {en:'GName',cn:'商品名称'},
+                        {en:'GFCategory',cn:'商品大类'},
+                        {en:'GSCategory',cn:'商品中类'},
+                        {en:'GMCategory',cn:'商品小类'},
+                        {en:'GUnit',cn:'零售单位'},
+                        {en:'GPrice',cn:'零售单价'},
+                    ],
+                    total:0,
+                    pagesize:10,
+                    currentpage:1
+                }
+            },
+            methods:{
+                init(){
+                    var that = this;
+                    axios({
+                        method: 'post',
+                        url: '/goodsManagement/init'
+                    })
+                        .then(function (response) {
+                            if (response.data != null) {
+                                that.total=response.data;
+                            }
+                            else
+                                console.log("加载失败");
+                        })
+                        .catch(function (error) {
+                            alert(error);
+                        });
+                },
+                view(){
+                    var that = this;
+                    axios({
+                        method: 'post',
+                        url: '/goodsManagement/view',
+                        data:{
+                            limit:10,
+                            offset:(that.currentpage-1)*10
+                        }
+                    })
+                        .then(function (response) {
+                            if (response.data != null) {
+                                that.tableData= response.data;
+                            }
+                            else
+                                console.log("加载失败");
+                        })
+                        .catch(function (error) {
+                            alert(error);
+                        });
+                },
+                open_add(){
+                    this.add_Visible=true;
+                },
+                add(){
+                    let tag=true;
+                    if(this.add_No.length!==13||this.add_Name.length<1||this.add_Unit===""||this.add_Price==="") {
+                        alert("格式错误！");
+                        tag=false;
+                    }
+                    var that=this;
+                    if(tag) {
+                        axios({
+                            method: 'post',
+                            url: '/goodsManagement/add',
+                            data: {
+                                no: that.add_No,
+                                name: that.add_Name,
+                                fcategory: that.add_FC,
+                                scategory: that.add_SC,
+                                mcategory: that.add_MC,
+                                unit:that.add_Unit,
+                                price:that.add_Price
+                            }
+                        })
+                            .then(function (response) {
+                                if (response.data === true) {
+                                    that.view()
+                                } else
+                                    console.log(response.data);
+                            })
+                            .catch(function (error) {
+                                alert(error);
+                            });
+                    }
+                },
+                sublist(event){
+                    let i;
+                    var that = this;
+                    this.sub_No=[];
+                    for(i=0;i<event.length;i++){
+                        that.sub_No.push(event[i]["GNo"]);
+                    }
+                },
+                sub(){
+                    var that=this;
+                    axios({
+                        method: 'post',
+                        url: '/goodsManagement/sub',
+                        data: {
+                            list:that.sub_No,
+                            length:that.sub_No.length
+                        }
+                    })
+                        .then(function (response) {
+                            if (response.data===true) {
+                                that.view();
+                            }
+                            else
+                                console.log(response.data);
+                        })
+                        .catch(function (error) {
+                            alert(error);
+                        });
+                },
+                mod_init(event){
+                    this.old_mod_No=event["GNo"];
+                    this.mod_No=event["GNo"];
+                    this.mod_Name=event["GName"];
+                    this.mod_FC=event["GFCategory"];
+                    this.mod_SC=event["GSCategory"];
+                    this.mod_MC=event["GMCategory"];
+                    this.mod_Unit=event["GUnit"];
+                    this.mod_Price=event["GPrice"];
+                    this.mod_Visible=true;
+                },
+                mod(){
+                    let tag=true;
+                    if(this.mod_No.length!==13||this.mod_Name.length<1||this.mod_Unit===""||this.mod_Price==="") {
+                        alert("格式错误！");
+                        tag=false;
+                    }
+                    var that=this;
+                    if(tag) {
+                        axios({
+                            method: 'post',
+                            url: '/goodsManagement/mod',
+                            data: {
+                                target: that.old_mod_No,
+                                no: that.mod_No,
+                                name: that.mod_Name,
+                                fcategory: that.mod_FC,
+                                scategory: that.mod_SC,
+                                mcategory: that.mod_MC,
+                                unit: that.mod_Unit,
+                                price: that.mod_Price
+                            }
+                        })
+                            .then(function (response) {
+                                if (response.data === true) {
+                                } else
+                                    console.log(response.data);
+                            })
+                            .catch(function (error) {
+                                alert(error);
+                            });
+                        this.init()
+                    }
+                },
+                search(val){
+                    let gtype=val[0];
+                    let gtext=val[1];
+                    let tag=1;
+                    if(gtext===""){
+                        that.view();
+                        tag=0;
+                    }
+                    if(tag) {
+                        var that = this;
+                        axios({
+                            method: 'post',
+                            url: '/goodsManagement/search',
+                            data: {
+                                type: gtype,
+                                text: gtext,
+                                limit:10,
+                                offset:(that.currentpage-1)*10
+                            }
+                        })
+                            .then(function (response) {
+                                console.log(response.data);
+                                if (response.data !== null && response.data !== "") {
+                                    that.tableData=response.data;
+                                    that.total=response.data.length;
+                                } else {
+                                    that.tableData = [];
+                                    console.log("加载失败");
+                                }
+                            })
+                            .catch(function (error) {
+                                alert(error);
+                            });
+                    }
+                },
+                pageChange(pageNumber){
+                    this.currentpage=pageNumber;
+                    this.view();
+                },
+                checkbox_select(row, column, event){
+                    this.$refs.table.toggleRowSelection(row);
+                }
+            },
+            created() {
+                this.init();
+                this.view();
+            },
+            template:"<el-main><div><searchbar :search-list='searchlist' :default_search='default_search' @search='search'></searchbar><as_btn_group :table_type='table_type' @add='open_add()' @sub='sub_Visible=true'></as_btn_group></div>" +
+                "<el-table ref='table' :data='tableData' @selection-change='sublist($event)' @row-click='checkbox_select' @row-dblclick='mod_init($event)'><el-table-column type='selection' ></el-table-column><el-table-column v-for='(item,index) in columnlist' :prop='item.en' :label='item.cn' :key='index'></el-table-column></el-table><paginationbar :total='total' :pagesize='pagesize' :currentpage='currentpage' @pageChange='pageChange'></paginationbar>" +
+                "<el-dialog :visible.sync='sub_Visible'>确认要删除吗？<span slot='footer' class='dialog-footer'><el-button @click='sub_Visible = false'>取消</el-button><el-button type='primary' @click='sub_Visible = false,sub()'>确定</el-button></span></el-dialog>" +
+                "<el-dialog title='新增商品' :visible.sync='add_Visible'><el-input v-model='add_No' maxlength='13'><template slot='prepend'>商品条码：</template></el-input><el-input v-model='add_Name' maxlength='20'><template slot='prepend'>商品名称：</template></el-input><el-input v-model='add_FC' maxlength='6'><template slot='prepend'>商品大类：</template></el-input><el-input v-model='add_SC' maxlength='10'><template slot='prepend'>商品中类：</template></el-input><el-input v-model='add_MC' maxlength='10'><template slot='prepend'>商品小类：</template></el-input><el-input v-model='add_Unit' maxlength='2'><template slot='prepend'>零售单位：</template></el-input><el-input v-model='add_Price' maxlength='10'><template slot='prepend'>零售单价：</template></el-input><span slot='footer' class='dialog-footer'><el-button @click='add_Visible = false'>取消</el-button><el-button type='primary' @click='add_Visible = false,add()'>确定</el-button></span></el-dialog>" +
+                "<el-dialog title='详细信息/编辑' :visible.sync='mod_Visible'><el-input v-model='mod_No' maxlength='13'><template slot='prepend'>商品条码：</template></el-input><el-input v-model='mod_Name' maxlength='20'><template slot='prepend'>商品名称：</template></el-input><el-input v-model='mod_FC' maxlength='6'><template slot='prepend'>商品大类：</template></el-input><el-input v-model='mod_SC' maxlength='10'><template slot='prepend'>商品中类：</template></el-input><el-input v-model='mod_MC' maxlength='10'><template slot='prepend'>商品小类：</template></el-input><el-input v-model='mod_Unit' maxlength='2'><template slot='prepend'>零售单位：</template></el-input><el-input v-model='mod_Price' maxlength='10'><template slot='prepend'>零售单价：</template></el-input><span slot='footer' class='dialog-footer'><el-button @click='mod_Visible = false'>取消</el-button><el-button type='primary' @click='mod_Visible = false,mod()'>确定</el-button></span></el-dialog></el-main>"
+        })
+        var customer_info = Vue.component('customer_info',{
+            data(){
+                return{
+                    fullData:[],
+                    tableData:[],
+                    table_type:"customer",
+                    add_Visible:false,
+                    add_No:"",
+                    add_Name:"",
+                    add_Gender:"",
+                    add_Tel:"",
+                    add_Expiry:"",
+                    sub_Visible:false,
+                    sub_No:[],
+                    mod_Visible:false,
+                    old_mod_No:"",
+                    mod_No:"",
+                    mod_Name:"",
+                    mod_Gender:"",
+                    mod_Tel:"",
+                    mod_Expiry:"",
+                    searchlist:['会员卡号','会员名称'],
+                    default_search:"会员卡号",
+                    columnlist:[
+                        {en:'CNo',cn:'会员卡号'},
+                        {en:'CName',cn:'会员名称'},
+                        {en:'CGender',cn:'性别'},
+                        {en:'CTel',cn:'联系电话'},
+                        {en:'CExpiry',cn:'有效日期'},
+                    ],
+                    total:0,
+                    pagesize:10,
+                    currentpage:1
+                }
+            },
+            methods:{
+                init(){
+                    var that = this;
+                    axios({
+                        method: 'post',
+                        url: '/customerManagement/init'
+                    })
+                        .then(function (response) {
+                            if (response.data != null) {
+                                that.total=response.data;
+                            }
+                            else
+                                console.log("加载失败");
+                        })
+                        .catch(function (error) {
+                            alert(error);
+                        });
+                },
+                view(){
+                    var that = this;
+                    axios({
+                        method: 'post',
+                        url: '/customerManagement/view',
+                        data:{
+                            limit:10,
+                            offset:(that.currentpage-1)*10
+                        }
+                    })
+                        .then(function (response) {
+                            if (response.data != null) {
+                                console.log(response.data);
+                                that.tableData= response.data;
+                            }
+                            else
+                                console.log("加载失败");
+                        })
+                        .catch(function (error) {
+                            alert(error);
+                        });
+                },
+                open_add(){
+                    this.add_Visible=true;
+                },
+                add(){
+                    let tag=true;
+                    if(this.add_No.length!==10||this.add_Name.length<2||(this.add_Gender!=="男"&&this.add_Gender!=="女")) {
+                        console.log(this.mod_Expiry.length);
+                        alert("格式错误！");
+                        tag=false;
+                    }
+                    var that=this;
+                    if(tag) {
+                        axios({
+                            method: 'post',
+                            url: '/customerManagement/add',
+                            data: {
+                                no: that.add_No,
+                                name: that.add_Name,
+                                gender: that.add_Gender,
+                                tel: that.add_Tel,
+                                expiry: that.add_Expiry,
+                            }
+                        })
+                            .then(function (response) {
+                                if (response.data === true) {
+                                    that.view()
+                                }
+                            })
+                            .catch(function (error) {
+                                alert(error);
+                            });
+                    }
+                },
+                sublist(event){
+                    let i;
+                    var that = this;
+                    this.sub_No=[];
+                    for(i=0;i<event.length;i++){
+                        that.sub_No.push(event[i]["CNo"]);
+                    }
+                },
+                sub(){
+                    var that=this;
+                    axios({
+                        method: 'post',
+                        url: '/customerManagement/sub',
+                        data: {
+                            list:that.sub_No,
+                            length:that.sub_No.length
+                        }
+                    })
+                        .then(function (response) {
+                            if (response.data===true) {
+                                that.view()
+                            }
+                            else
+                                console.log(response.data);
+                        })
+                        .catch(function (error) {
+                            alert(error);
+                        });
+                },
+                mod_init(event){
+                    this.old_mod_No=event["CNo"];
+                    this.mod_No=event["CNo"];
+                    this.mod_Name=event["CName"];
+                    this.mod_Gender=event["CGender"];
+                    this.mod_Tel=event["CTel"];
+                    this.mod_Expiry=event["CExpiry"]
+                    this.mod_Visible=true;
+                },
+                mod(){
+                    let tag=true;
+                    if(this.mod_No.length!==10||this.mod_Name.length<2||(this.mod_Gender!=="男"&&this.mod_Gender!=="女")) {
+                        alert("格式错误！");
+                        tag=false;
+                    }
+                    var that=this;
+                    if(tag) {
+                        axios({
+                            method: 'post',
+                            url: '/customerManagement/mod',
+                            data: {
+                                target: that.old_mod_No,
+                                no: that.mod_No,
+                                name: that.mod_Name,
+                                gender: that.mod_Gender,
+                                tel: that.mod_Tel,
+                                expiry: that.mod_Expiry,
+                            }
+                        })
+                            .then(function (response) {
+                                if (response.data === true) {
+                                    that.view();
+                                }
+                                else
+                                    console.log(response.data);
+                            })
+                            .catch(function (error) {
+                                alert(error);
+                            });
+                    }
+                },
+                search(val){
+                    let ctype=val[0];
+                    let ctext=val[1];
+                    let tag=1;
+                    if(ctext===""){
+                        that.view();
+                    }
+                    if(tag) {
+                        var that = this;
+                        axios({
+                            method: 'post',
+                            url: '/customerManagement/search',
+                            data: {
+                                type: ctype,
+                                text: ctext,
+                                limit:10,
+                                offset:(that.currentpage-1)*10
+                            }
+                        })
+                            .then(function (response) {
+                                console.log(response.data);
+                                if (response.data !== null && response.data !== "") {
+                                    that.tableData = response.data;
+                                    that.total=response.data.length
+                                } else {
+                                    that.tableData = [];
+                                    console.log("加载失败");
+                                }
+                            })
+                            .catch(function (error) {
+                                alert(error);
+                            });
+                    }
+                },
+                pageChange(pageNumber){
+                    this.currentpage=pageNumber;
+                    this.view();
+                },
+                checkbox_select(row, column, event){
+                    this.$refs.table.toggleRowSelection(row);
+                }
+            },
+            created() {
+                this.init();
+                this.view();
+            },
+            template:"<el-main><div><searchbar :search-list='searchlist' :default_search='default_search' @search='search'></searchbar><as_btn_group :table_type='table_type' @add='open_add()' @sub='sub_Visible=true'></as_btn_group></div>" +
+                "<el-table ref='table' :data='tableData' @selection-change='sublist($event)' @row-click='checkbox_select' @row-dblclick='mod_init($event)'><el-table-column type='selection' ></el-table-column><el-table-column v-for='(item,index) in columnlist' :prop='item.en' :label='item.cn' :key='index'></el-table-column></el-table><paginationbar :total='total' :pagesize='pagesize' :currentpage='currentpage' @pageChange='pageChange'></paginationbar>" +
+                "<el-dialog :visible.sync='sub_Visible'>确认要删除吗？<span slot='footer' class='dialog-footer'><el-button @click='sub_Visible = false'>取消</el-button><el-button type='primary' @click='sub_Visible = false,sub()'>确定</el-button></span></el-dialog>" +
+                "<el-dialog title='新增会员' :visible.sync='add_Visible'><el-input v-model='add_No' maxlength='10'><template slot='prepend'>会员卡号：</template></el-input><el-input v-model='add_Name' maxlength='4'><template slot='prepend'>会员名称：</template></el-input><el-input v-model='add_Gender' maxlength='1'><template slot='prepend'>性&emsp;别&emsp;：</template></el-input><el-input v-model='add_Tel' maxlength='11'><template slot='prepend'>联系电话：</template></el-input><el-input v-model='add_Expiry' type='date'><template slot='prepend'>有效日期：</template></el-input><span slot='footer' class='dialog-footer'><el-button @click='add_Visible = false'>取消</el-button><el-button type='primary' @click='add_Visible = false,add()'>确定</el-button></span></el-dialog>" +
+                "<el-dialog title='详细信息/编辑' :visible.sync='mod_Visible'><el-input v-model='mod_No' maxlength='10'><template slot='prepend'>会员卡号：</template></el-input><el-input v-model='mod_Name' maxlength='4'><template slot='prepend'>会员名称：</template></el-input><el-input v-model='mod_Gender' maxlength='1'><template slot='prepend'>性&emsp;别&emsp;：</template></el-input><el-input v-model='mod_Tel' maxlength='11'><template slot='prepend'>联系电话：</template></el-input><el-input v-model='mod_Expiry' type='date'><template slot='prepend'>有效日期：</template></el-input><span slot='footer' class='dialog-footer'><el-button @click='mod_Visible = false'>取消</el-button><el-button type='primary' @click='mod_Visible = false,mod()'>确定</el-button></span></el-dialog></el-main>"
+        })
+        var employee_info=Vue.component('employee_info',{
+            data(){
+                return{
+                    fullData:[],
+                    tableData:[],
+                    table_type:"employee",
+                    searchlist:['店员编号','店员名称'],
+                    default_search:"店员编号",
+                    columnlist:[
+                        {en:'ENo',cn:'店员编号'},
+                        {en:'EName',cn:'店员名称'},
+                        {en:'EGender',cn:'性别'},
+                        {en:'ETitle',cn:'职务'},
+                    ],
+                    total:0,
+                    pagesize:10,
+                    currentpage:1
+                }
+            },
+            methods:{
+                init(){
+                    var that = this;
+                    axios({
+                        method: 'post',
+                        url: '/employeeManagement/init',
+                    })
+                        .then(function (response) {
+                            if (response.data != null) {
+                                that.total=response.data;
+                            }
+                            else
+                                console.log("加载失败");
+                        })
+                        .catch(function (error) {
+                            alert(error);
+                        });
+                },
+                view(){
+                    var that = this;
+                    axios({
+                        method: 'post',
+                        url: '/employeeManagement/view',
+                        data:{
+                            limit:10,
+                            offset:(that.currentpage-1)*10
+                        }
+                    })
+                        .then(function (response) {
+                            if (response.data != null) {
+                                console.log(response.data);
+                                that.tableData= response.data;
+                            }
+                            else
+                                console.log("加载失败");
+                        })
+                        .catch(function (error) {
+                            alert(error);
+                        });
+                },
+                search(val){
+                    let stype=val[0];
+                    let stext=val[1];
+                    let tag=1;
+                    if(stext===""){
+                        that.view();
+                    }
+                    if(tag) {
+                        var that = this;
+                        axios({
+                            method: 'post',
+                            url: '/employeeManagement/search',
+                            data: {
+                                type: stype,
+                                text: stext,
+                                limit:10,
+                                offset:(that.currentpage-1)*10
+                            }
+                        })
+                            .then(function (response) {
+                                if (response.data !== null && response.data !== "") {
+                                    that.tableData = response.data;
+                                    that.total=response.data.length;
+                                } else {
+                                    that.tableData = [];
+                                    console.log("加载失败");
+                                }
+                            })
+                            .catch(function (error) {
+                                alert(error);
+                            });
+                    }
+                },
+                pageChange(pageNumber){
+                    this.currentpage=pageNumber;
+                    this.view();
+                },
+            },
+            created() {
+                this.init();
+                this.view();
+            },
+            template:"<el-main><div><searchbar :search-list='searchlist' :default_search='default_search' @search='search'></searchbar></div>" +
+                "<el-table :data='tableData'></el-table-column><el-table-column v-for='(item,index) in columnlist' :prop='item.en' :label='item.cn' :key='index'></el-table-column></el-table><paginationbar :total='total' :pagesize='pagesize' :currentpage='currentpage' @pageChange='pageChange'></paginationbar></el-main>"
+        })
+        var inventory_info = Vue.component('inventory_info',{
+            data(){
+                return{
+                    fullData:[],
+                    tableData:[],
+                    table_type:"inventory",
+                    add_Visible:false,
+                    add_BNo:"",
+                    add_WNo:"",
+                    add_WName:"",
+                    add_GNo:"",
+                    add_GName:"",
+                    add_SNo:"",
+                    add_SName:"",
+                    add_INum:"",
+                    add_IWUnit:"",
+                    add_ISpecs:"",
+                    add_IRUnit:"",
+                    sub_Visible:false,
+                    sub_INum:"",
+                    sub_Price:"",
+                    trans_Visible:false,
+                    trans_BNo:"",
+                    trans_GNo:"",
+                    trans_GName:"",
+                    trans_from_WNo:"",
+                    trans_from_WName:"",
+                    trans_to_WNo:"",
+                    trans_to_WName:"",
+                    trans_SNo:"",
+                    trans_num:"",
+                    trans_WUnit:"",
+                    trans_Specs:"",
+                    mod_Visible:false,
+                    old_mod_BNo:"",
+                    mod_BNo:"",
+                    mod_WNo:"",
+                    mod_WName:"",
+                    mod_GNo:"",
+                    mod_GName:"",
+                    mod_SNo:"",
+                    mod_SName:"",
+                    mod_INum:"",
+                    mod_IWUnit:"",
+                    mod_ISpecs:"",
+                    mod_IRUnit:"",
+                    row_selected:"",
+                    searchlist:['批次号','仓库编号','商品条码','供货商编号'],
+                    default_search:"商品条码",
+                    columnlist:[
+                        {en:'BNo',cn:'批次号'},
+                        {en:'WNo',cn:'仓库编号'},
+                        {en:'WName',cn:'仓库名称'},
+                        {en:'GNo',cn:'商品条码'},
+                        {en:'GName',cn:'商品名称'},
+                        {en:'SNo',cn: '供货商编号'},
+                        {en:'SName',cn: '供货商名称'},
+                        {en:'WNum',cn:'仓储数量'},
+                        {en:'WR',cn:'规格'},
+                    ],
+                    total:0,
+                    pagesize:10,
+                    currentpage:1
+                }
+            },
+            methods:{
+                init(){
+                    var that = this;
+                    axios({
+                        method: 'post',
+                        url: '/inventoryManagement/init',
+                    })
+                        .then(function (response) {
+                            if (response.data != null) {
+                                that.total=response.data;
+                            }
+                            else
+                                console.log("加载失败");
+                        })
+                        .catch(function (error) {
+                            alert(error);
+                        });
+                },
+                view(){
+                    var that = this;
+                    axios({
+                        method: 'post',
+                        url: '/inventoryManagement/view',
+                        data:{
+                            limit:10,
+                            offset:(that.currentpage-1)*10
+                        }
+                    })
+                        .then(function (response) {
+                            if (response.data != null) {
+                                console.log(response.data);
+                                that.tableData= response.data;
+                            }
+                            else
+                                console.log("加载失败");
+                        })
+                        .catch(function (error) {
+                            alert(error);
+                        });
+                },
+                open_add(){
+                    this.add_Visible=true;
+                },
+                add(){
+                    let tag=true;
+                    if(this.add_BNo.length!==10||this.add_WNo.length!==10||this.add_GNo.length!==13||this.add_SNo.length!==10||this.add_INum<1||this.add_IWUnit===""||this.add_ISpecs<1) {
+                        alert("格式错误！");
+                        tag=false;
+                    }
+                    else if(this.add_WName.length<1){
+                        alert("未发现该仓库信息！请联系管理员。");
+                        tag=false;
+                    }
+                    else if(this.add_GName.length<1){
+                        alert("未发现该商品信息！请先添加或联系管理员。");
+                        tag=false;
+                    }
+                    else if(this.add_SName.length<1){
+                        alert("未发现该供货商信息！请先添加或联系管理员。")
+                    }
+                    var that=this;
+                    if(tag) {
+                        axios({
+                            method: 'post',
+                            url: 'inventoryManagement/add',
+                            data: {
+                                bno:that.add_BNo,
+                                wno:that.add_WNo,
+                                gno:that.add_GNo,
+                                sno:that.add_SNo,
+                                eno:sessionStorage.getItem("ENo"),
+                                inum:that.add_INum,
+                                iwunit:that.add_IWUnit,
+                                ispecs:that.add_ISpecs,
+                            }
+                        })
+                            .then(function (response) {
+                                if (response.data === true) {
+                                    alert("入库成功！");
+                                    that.view();
+                                } else
+                                    alert(response.data);
+                            })
+                            .catch(function (error) {
+                                alert(error);
+                            });
+                    }
+                },
+                row_check(row){
+                    this.row_selected=row;
+                },
+                sub(){
+                    let tag=true;
+                    let style="sub";
+                    if(this.row_selected.INum<this.sub_INum||this.sub_INum===0){
+                        alert("数量错误！");
+                        tag=false
+                    }
+                    else if(this.sub_INum===this.sub_INum)
+                        style="del";
+                    if(tag) {
+                        var that = this;
+                        axios({
+                            method: 'post',
+                            url: '/inventoryManagement/sub',
+                            data: {
+                                style: style,
+                                bno: that.row_selected.BNo,
+                                gno: that.row_selected.GNo,
+                                wno: that.row_selected.WNo,
+                                wunit: that.row_selected.IWUnit,
+                                specs: that.row_selected.ISpecs,
+                                runit: that.row_selected.IRUnit,
+                                sprice: that.sub_Price,
+                                eno: sessionStorage.getItem("ENo"),
+                                num: that.sub_INum,
+                            }
+                        })
+                            .then(function (response) {
+                                if (response.data === 1) {
+                                    alert("出库成功！");
+                                    that.view();
+                                }
+                                else
+                                    console.log(response.data);
+                            })
+                            .catch(function (error) {
+                                alert(error);
+                            });
+                    }
+                },
+                mod_init(event){
+                    this.old_mod_BNo=event["BNo"];
+                    this.mod_BNo=event["BNo"];
+                    this.mod_WNo=event["WNo"];
+                    this.mod_WName=event["WName"]
+                    this.mod_GNo=event["GNo"];
+                    this.mod_GName=event["GName"];
+                    this.mod_SNo=event["SNo"];
+                    this.mod_SName=event["SName"];
+                    this.mod_INum=event["INum"];
+                    this.mod_IWUnit=event["IWUnit"];
+                    this.mod_ISpecs=parseInt(event["ISpecs"]);
+                    this.mod_IRUnit=event["IRUnit"];
+                    this.mod_Visible=true;
+                },
+                info_match(type,No,Ttype){
+                    let that=this;
+                    axios({
+                        method: 'post',
+                        url: '/inventoryManagement/match',
+                        data: {
+                            type: type,
+                            no: No,
+                        }
+                    })
+                        .then(function (response) {
+                            console.log(response.data);
+                            if(type==="Warehouse") {
+                                if(Ttype==="mod")
+                                    that.mod_WName = response.data;
+                                else if(Ttype==="trans_to")
+                                    that.trans_to_WName = response.data;
+                                else if(Ttype==="add")
+                                    that.add_WName = response.data;
+                            }
+                            else if(type==="Goods") {
+                                if(Ttype==="mod")
+                                    that.mod_GName = response.data;
+                                else if(Ttype==="add")
+                                    that.add_GName = response.data;
+                            }
+                            else if(type==="Supplier") {
+                                if(Ttype==="mod")
+                                    that.mod_SName = response.data;
+                                else if(Ttype==="add")
+                                    that.add_SName = response.data;
+                            }
+                            else if(type==="RUnit"){
+                                if(Ttype==="add")
+                                    that.add_IRUnit = response.data;
+                            }
+                        })
+                        .catch(function (error) {
+                            alert(error);
+                        });
+                },
+                mod(){
+                    let tag=true;
+                    if(this.old_mod_BNo.length!==10||this.mod_BNo.length!==10||this.mod_GNo.length!==13||this.mod_SNo.length!==10||this.mod_INum<1||this.mod_IWUnit===""||this.mod_ISpecs<1) {
+                        alert("格式错误！");
+                        tag=false;
+                    }
+                    else if(this.mod_WName.length<1){
+                        alert("未发现该仓库信息！请联系管理员。");
+                        tag=false;
+                    }
+                    else if(this.mod_GName.length<1){
+                        alert("未发现该商品信息！请先添加或联系管理员。");
+                        tag=false;
+                    }
+                    else if(this.mod_SName.length<1){
+                        alert("未发现该供货商信息！请先添加或联系管理员。")
+                    }
+                    var that=this;
+                    if(tag) {
+                        axios({
+                            method: 'post',
+                            url: 'inventoryManagement/mod',
+                            data: {
+                                target: that.old_mod_BNo,
+                                wno:that.mod_WNo,
+                                gno:that.mod_GNo,
+                                sno:that.mod_SNo,
+                                num:that.mod_INum,
+                                wunit:that.mod_IWUnit,
+                                specs:that.mod_ISpecs,
+                                eNo:sessionStorage.getItem("ENo")
+                            }
+                        })
+                            .then(function (response) {
+                                console.log(response.data);
+                                if (response.data === true) {
+                                    alert("编辑成功！");
+                                    that.view();
+                                }
+                            })
+                            .catch(function (error) {
+                                alert(error);
+                            });
+                    }
+                },
+                open_trans(){
+                    this.trans_BNo=this.row_selected.BNo;
+                    this.trans_GNo=this.row_selected.GNo;
+                    this.trans_GName=this.row_selected.GName;
+                    this.trans_SNo=this.row_selected.SNo;
+                    this.trans_from_WNo=this.row_selected.WNo;
+                    this.trans_from_WName=this.row_selected.WName;
+                    this.trans_WUnit=this.row_selected.IWUnit;
+                    this.trans_Specs=this.row_selected.ISpecs;
+                    this.trans_Visible=true;
+                },
+                trans(){
+                    let style="ptrans";
+                    let tag=true;
+                    if(this.trans_num<1) {
+                        alert("格式错误！");
+                        tag=false;
+                    }
+                    else if(this.trans_to_WName.length<1) {
+                        alert("未发现该仓库信息！请联系管理员。");
+                        tag = false;
+                    }
+                    if(this.trans_num===this.row_selected.INum){
+                        style="ftrans";
+                    }
+                    var that=this;
+                    if(tag) {
+                        axios({
+                            method: 'post',
+                            url: 'inventoryManagement/trans',
+                            data: {
+                                style: style,
+                                target: that.trans_BNo,
+                                gno:that.trans_GNo,
+                                from_wno:that.trans_from_WNo,
+                                to_wno:that.trans_to_WNo,
+                                sno:that.trans_SNo,
+                                num:that.trans_num,
+                                wunit:that.trans_WUnit,
+                                specs:that.trans_Specs,
+                                eno:sessionStorage.getItem("ENo")
+                            }
+                        })
+                            .then(function (response) {
+                                if (response.data === true) {
+                                    alert("转库成功！");
+                                    that.view();
+                                }
+                            })
+                            .catch(function (error) {
+                                alert(error);
+                            });
+                    }
+                },
+                search(val){
+                    let itype=val[0];
+                    let itext=val[1];
+                    let tag=1;
+                    if(itext===""){
+                        that.view();
+                    }
+                    if(tag) {
+                        var that = this;
+                        axios({
+                            method: 'post',
+                            url: 'inventoryManagement/search',
+                            data: {
+                                type: itype,
+                                text: itext
+                            }
+                        })
+                            .then(function (response) {
+                                if (response.data !== null && response.data !== "") {
+                                    that.tableData = response.data;
+                                    that.total=response.data.length;
+                                } else {
+                                    that.tableData = [];
+                                    console.log("加载失败");
+                                }
+                            })
+                            .catch(function (error) {
+                                alert(error);
+                            });
+                    }
+                },
+                pageChange(pageNumber){
+                    this.currentpage=pageNumber;
+                    this.view();
+                },
+            },
+            created() {
+                this.init();
+                this.view();
+            },
+            template:"<el-main><div><searchbar :search-list='searchlist' :default_search='default_search' @search='search'></searchbar><ats_btn_group :table_type='table_type' @in='open_add()' @trans='open_trans()' @out='sub_Visible=true'></ats_btn_group></div>" +
+                "<el-table :data='tableData' highlight-current-row @row-dblclick='mod_init($event)' @current-change='row_check'><el-table-column v-for='(item,index) in columnlist' :prop='item.en' :label='item.cn' :key='index'></el-table-column></el-table><paginationbar :total='total' :pagesize='pagesize' :currentpage='currentpage' @pageChange='pageChange'></paginationbar>" +
+                "<el-dialog :visible.sync='sub_Visible' title='出库'><el-input v-model='sub_INum' maxlength='10' type='number'><template slot='prepend'>数量：</template></el-input><el-input v-model='sub_Price' maxlength='10' type='number'><template slot='prepend'>单价：</template></el-input><span slot='footer' class='dialog-footer'><el-button @click='sub_Visible = false'>取消</el-button><el-button type='primary' @click='sub_Visible = false,sub()'>确定</el-button></span></el-dialog>" +
+                "<el-dialog title='入库' :visible.sync='add_Visible'><el-input v-model='add_BNo' maxlength='10'><template slot='prepend'>批&emsp;次&emsp;号：</template></el-input><el-input v-model='add_WNo' maxlength='10' @blur='info_match(\"Warehouse\",add_WNo,\"add\")'><template slot='prepend'>仓库编号&emsp;：</template></el-input><el-input v-model='add_WName' maxlength='10' :disabled='true'><template slot='prepend'>仓库名称&emsp;：</template></el-input><el-input v-model='add_GNo' maxlength='13' @blur='info_match(\"Goods\",add_GNo,\"add\"),info_match(\"RUnit\",add_GNo,\"add\")'><template slot='prepend'>商品条码&emsp;：</template></el-input><el-input v-model='add_GName' maxlength='20' :disabled='true'><template slot='prepend'>商品名称&emsp;：</template></el-input><el-input v-model='add_SNo' maxlength='10' @blur='info_match(\"Supplier\",add_SNo,\"add\")'><template slot='prepend'>供货商编号：</template></el-input><el-input v-model='add_SName' maxlength='20' :disabled='true'><template slot='prepend'>供货商名称：</template></el-input><el-input v-model='add_IRUnit' maxlength='2' :disabled='true'><template slot='prepend'>零售单位&emsp;：</template></el-input><el-input v-model='add_INum' maxlength='10' type='number'><template slot='prepend'>&emsp;数&emsp;量&emsp;：</template></el-input><el-input v-model='add_IWUnit' maxlength='2'><template slot='prepend'>仓储单位&emsp;：</template></el-input><el-input v-model='add_ISpecs' maxlength='10'><template slot='prepend'>&emsp;规&emsp;格&emsp;：</template></el-input><span slot='footer' class='dialog-footer'><el-button @click='add_Visible = false'>取消</el-button><el-button type='primary' @click='add_Visible = false,add()'>确定</el-button></span></el-dialog>" +
+                "<el-dialog title='详细信息/编辑' :visible.sync='mod_Visible'><el-input v-model='mod_BNo' maxlength='10' :disabled='true'><template slot='prepend'>批&emsp;次&emsp;号：</template></el-input><el-input v-model='mod_WNo' maxlength='10' @blur='info_match(\"Warehouse\",mod_WNo,\"mod\")'><template slot='prepend'>仓库编号&emsp;：</template></el-input><el-input v-model='mod_WName' maxlength='10' :disabled='true'><template slot='prepend'>仓库名称&emsp;：</template></el-input><el-input v-model='mod_GNo' maxlength='13' @blur='info_match(\"Goods\",mod_GNo,\"mod\")'><template slot='prepend'>商品条码&emsp;：</template></el-input><el-input v-model='mod_GName' maxlength='20' :disabled='true'><template slot='prepend'>商品名称&emsp;：</template></el-input><el-input v-model='mod_SNo' maxlength='10' @blur='info_match(\"Supplier\",mod_SNo,\"mod\")'><template slot='prepend'>供货商编号：</template></el-input><el-input v-model='mod_SName' maxlength='20' :disabled='true'><template slot='prepend'>供货商名称：</template></el-input><el-input v-model='mod_IRUnit' maxlength='2' :disabled='true'><template slot='prepend'>零售单位&emsp;：</template></el-input><el-input v-model='mod_INum' maxlength='10' type='number'><template slot='prepend'>&emsp;数&emsp;量&emsp;：</template></el-input><el-input v-model='mod_IWUnit' maxlength='2'><template slot='prepend' :disabled='true'>仓储单位&emsp;：</template></el-input><el-input v-model='mod_ISpecs' maxlength='10'><template slot='prepend'>&emsp;规&emsp;格&emsp;：</template></el-input><span slot='footer' class='dialog-footer'><el-button @click='mod_Visible = false'>取消</el-button><el-button type='primary' @click='mod_Visible = false,mod()'>确定</el-button></span></el-dialog>" +
+                "<el-dialog :visible.sync='trans_Visible' title='转库'><el-input v-model='trans_BNo' maxlength='10' :disabled='true'><template slot='prepend'>批次号：</template></el-input><el-input v-model='trans_GNo' maxlength='13' :disabled='true'><template slot='prepend'>商品条码：</template></el-input><el-input v-model='trans_GName' maxlength='20' :disabled='true'><template slot='prepend'>商品名称：</template></el-input><el-input v-model='trans_from_WNo' maxlength='10' :disabled='true'><template slot='prepend'>原仓库编号：</template></el-input><el-input v-model='trans_from_WName' maxlength='10' :disabled='true'><template slot='prepend'>原仓库名称：</template></el-input><el-input v-model='trans_to_WNo' maxlength='10' @blur='info_match(\"Warehouse\",trans_to_WNo,\"trans_to\")'><template slot='prepend'>目标仓库编号：</template></el-input><el-input v-model='trans_to_WName' maxlength='10' :disabled='true'><template slot='prepend' :disabled='true'>目标仓库名称：</template></el-input><el-input v-model='trans_num' maxlength='10' type='number'><template slot='prepend'>数量：</template></el-input><span slot='footer' class='dialog-footer'><el-button @click='trans_Visible = false'>取消</el-button><el-button type='primary' @click='trans_Visible = false,trans()'>确定</el-button></span></el-dialog></el-main>"
+        })
+        var shelf_info = Vue.component('shelf_info',{
+            data(){
+                return{
+                    fullData:[],
+                    tableData:[],
+                    table_type:"shelf",
+                    sub_Visible:false,
+                    sub_No:"",
+                    sub_ID:"",
+                    sub_GNo:"",
+                    sub_CNo:"",
+                    sub_BNo:"",
+                    sub_Num:"",
+                    sub_Unit:"",
+                    sub_Price:"",
+                    mod_Visible:false,
+                    mod_No:"",
+                    mod_BNo:"",
+                    mod_GNo:"",
+                    mod_GName:"",
+                    mod_Num:"",
+                    mod_Price:"",
+                    row_selected:"",
+                    searchlist:['批次号','商品条码','商品名称'],
+                    default_search:"商品条码",
+                    columnlist:[
+                        {en:'BNo',cn:'批次号'},
+                        {en:'GNo',cn:'商品条码'},
+                        {en:'GName',cn:'商品名称'},
+                        {en:'GFCategory',cn:'商品大类'},
+                        {en:'GSCategory',cn:'商品中类'},
+                        {en:'GMCategory',cn:'商品小类'},
+                        {en:'Num',cn:'数量'},
+                        {en:'Price',cn:'单价'},
+                    ],
+                    total:0,
+                    pagesize:10,
+                    currentpage:1
+                }
+            },
+            methods:{
+                init(){
+                    var that = this;
+                    axios({
+                        method: 'post',
+                        url: '/shelfManagement/init',
+                    })
+                        .then(function (response) {
+                            if (response.data != null) {
+                                that.total=response.data;
+                            }
+                            else
+                                console.log("加载失败");
+                        })
+                        .catch(function (error) {
+                            alert(error);
+                        });
+                },
+                view(){
+                    var that = this;
+                    axios({
+                        method: 'post',
+                        url: '/shelfManagement/view',
+                        data:{
+                            limit:10,
+                            offset:(that.currentpage-1)*10
+                        }
+                    })
+                        .then(function (response) {
+                            if (response.data != null) {
+                                console.log(response.data);
+                                that.tableData= response.data;
+                            }
+                            else
+                                console.log("加载失败");
+                        })
+                        .catch(function (error) {
+                            alert(error);
+                        });
+                },
+                row_check(row){
+                    this.row_selected=row;
+                },
+                sub_init(){
+                    this.sub_No=this.row_selected.No;
+                    this.sub_GNo=this.row_selected.GNo;
+                    this.sub_BNo=this.row_selected.BNo;
+                    this.sub_Unit=this.row_selected.RUnit;
+                    this.sub_Price=this.row_selected.Price;
+                },
+                sub(){
+                    let tag=true;
+                    let style="sub";
+                    if(this.row_selected.INum<this.sub_INum||this.sub_INum===0){
+                        alert("数量错误！");
+                        tag=false
+                    }
+                    else if(this.sub_INum===this.sub_INum)
+                        style="del";
+                    if(tag) {
+                        var that = this;
+                        axios({
+                            method: 'post',
+                            url: '/shelfManagement/sub',
+                            data: {
+                                style: style,
+                                no: that.sub_No,
+                                id: that.sub_ID,
+                                bno: that.sub_BNo,
+                                gno: that.sub_GNo,
+                                cno: that.sub_CNo,
+                                eno: sessionStorage.getItem("ENo"),
+                                num: that.sub_Num,
+                                sprice: that.sub_Price,
+                            }
+                        })
+                            .then(function (response) {
+                                if (response.data === 1) {
+                                    alert("登记成功！");
+                                    that.view();
+                                }
+                                else
+                                    console.log(response.data);
+                            })
+                            .catch(function (error) {
+                                alert(error);
+                            });
+                    }
+                },
+                mod_init(event){
+                    this.mod_BNo=event["BNo"];
+                    this.mod_GNo=event["GNo"];
+                    this.mod_GName=event["GName"];
+                    this.mod_Num=event["GNum"];
+                    this.mod_Price=event["Price"];
+                    this.mod_No=event["No"];
+                    this.mod_Visible=true;
+                },
+                mod(){
+                    let style="pmod";
+                    let tag=true;
+                    if(this.mod_Num<0||this.mod_Num===""||this.mod_Price===0||this.mod_Price<0||this.mod_Price==="") {
+                        alert("格式错误！");
+                        tag=false;
+                    }
+                    else if(this.mod_Num==="0")
+                        style="fmod";
+                    var that=this;
+                    if(tag) {
+                        axios({
+                            method: 'post',
+                            url: '/shelfManagement/mod',
+                            data: {
+                                style: style,
+                                target: that.mod_No,
+                                num:that.mod_Num,
+                                price:that.mod_Price,
+                                eno:sessionStorage.getItem("ENo")
+                            }
+                        })
+                            .then(function (response) {
+                                console.log(response.data);
+                                if (response.data === true) {
+                                    alert("编辑成功！");
+                                    that.view();
+                                }
+                            })
+                            .catch(function (error) {
+                                alert(error);
+                            });
+                    }
+                },
+                search(val){
+                    let stype=val[0];
+                    let stext=val[1];
+                    let tag=1;
+                    if(stext===""){
+                        that.view();
+                    }
+                    if(tag) {
+                        var that = this;
+                        axios({
+                            method: 'post',
+                            url: '/shelfManagement/search',
+                            data: {
+                                type: stype,
+                                text: stext
+                            }
+                        })
+                            .then(function (response) {
+                                if (response.data !== null && response.data !== "") {
+                                    that.tableData = response.data;
+                                    that.total=response.data.length;
+                                } else {
+                                    that.tableData = [];
+                                    console.log("加载失败");
+                                }
+                            })
+                            .catch(function (error) {
+                                alert(error);
+                            });
+                    }
+                },
+                pageChange(pageNumber){
+                    this.currentpage=pageNumber;
+                    this.view();
+                },
+            },
+            created() {
+                this.init();
+                this.view();
+            },
+            template:"<el-main><div><searchbar :search-list='searchlist' :default_search='default_search' @search='search'></searchbar><s_btn_group :table_type='table_type' @sub='sub_init(),sub_Visible=true'></s_btn_group></div>" +
+                "<el-table :data='tableData' highlight-current-row @row-dblclick='mod_init($event)' @current-change='row_check'><el-table-column v-for='(item,index) in columnlist' :prop='item.en' :label='item.cn' :key='index'></el-table-column></el-table><paginationbar :total='total' :pagesize='pagesize' :currentpage='currentpage' @pageChange='pageChange'></paginationbar>" +
+                "<el-dialog :visible.sync='sub_Visible' title='销售登记'><el-input v-model='sub_ID' maxlength='20'><template slot='prepend'>销售单号：</template></el-input><el-input v-model='sub_GNo' maxlength='13' :disabled='true'><template slot='prepend'>商品条码：</template></el-input><el-input v-model='sub_CNo' maxlength='10'><template slot='prepend'>会员卡号：</template></el-input><el-input v-model='sub_BNo' maxlength='10' :disabled='true'><template slot='prepend'>批次号&emsp;：</template></el-input></el-input><el-input v-model='sub_Num' maxlength='10' type='number'><template slot='prepend'>数&emsp;量&emsp;：</template></el-input><el-input v-model='sub_Unit' maxlength='10' :disabled='true'><template slot='prepend'>零售单位：</template></el-input><el-input v-model='sub_Price' maxlength='10' type='number'><template slot='prepend'>单&emsp;价&emsp;：</template></el-input><span slot='footer' class='dialog-footer'><el-button @click='sub_Visible = false'>取消</el-button><el-button type='primary' @click='sub_Visible = false,sub()'>确定</el-button></span></el-dialog>" +
+                "<el-dialog title='详细信息/编辑' :visible.sync='mod_Visible'><el-input v-model='mod_BNo' maxlength='10' :disabled='true'><template slot='prepend'>批次号&emsp;：</template></el-input><el-input v-model='mod_GNo' maxlength='13' :disabled='true'><template slot='prepend'>商品条码：</template></el-input><el-input v-model='mod_GName' maxlength='20' :disabled='true'><template slot='prepend'>商品名称：</template></el-input><el-input v-model='mod_Num' maxlength='10' type='number'><template slot='prepend'>数&emsp;量&emsp;：</template></el-input><el-input v-model='mod_Price' maxlength='10' type='number'><template slot='prepend'>单&emsp;价&emsp;：</template></el-input><span slot='footer' class='dialog-footer'><el-button @click='mod_Visible = false'>取消</el-button><el-button type='primary' @click='mod_Visible = false,mod()'>确定</el-button></span></el-dialog></el-main>"
+        })
+        var SR_info = Vue.component('SR_info',{
+            data(){
+                return{
+                    fullData:[],
+                    tableData:[],
+                    table_type:"SR",
+                    searchlist:['销售单号','批次号','商品条码','商品名称','会员卡号','店员编号'],
+                    default_search:"销售单号",
+                    columnlist:[
+                        {en:'OrderID',cn:'销售单号'},
+                        {en:'BNo',cn:'批次号'},
+                        {en:'GNo',cn:'商品条码'},
+                        {en:'GName',cn:'商品名称'},
+                        {en:'CNo',cn:'会员卡号'},
+                        {en:'CName',cn:'会员名称'},
+                        {en:'ENo',cn:'店员编号'},
+                        {en:'EName',cn:'店员名称'},
+                        {en:'Time',cn:'时间'},
+                        {en:'Num',cn:'数量'},
+                        {en:'Price',cn:'单价'},
+                        {en:'Money',cn:'总额'}
+                    ],
+                    total:0,
+                    pagesize:10,
+                    currentpage:1
+                }
+            },
+            methods:{
+                init(){
+                    var that = this;
+                    axios({
+                        method: 'post',
+                        url: '/salesrecordManagement/init',
+                    })
+                        .then(function (response) {
+                            if (response.data != null) {
+                                that.total=response.data;
+                            }
+                            else
+                                console.log("加载失败");
+                        })
+                        .catch(function (error) {
+                            alert(error);
+                        });
+                },
+                view(){
+                    var that = this;
+                    axios({
+                        method: 'post',
+                        url: '/salesrecordManagement/view',
+                        data:{
+                            limit:10,
+                            offset:(that.currentpage-1)*10
+                        }
+                    })
+                        .then(function (response) {
+                            if (response.data != null) {
+                                console.log(response.data);
+                                that.tableData= response.data;
+                            }
+                            else
+                                console.log("加载失败");
+                        })
+                        .catch(function (error) {
+                            alert(error);
+                        });
+                },
+                search(val){
+                    let stype=val[0];
+                    let stext=val[1];
+                    let tag=1;
+                    if(stext===""){
+                        that.view();
+                    }
+                    if(tag) {
+                        var that = this;
+                        axios({
+                            method: 'post',
+                            url: '/salesrecordManagement/search',
+                            data: {
+                                type: stype,
+                                text: stext
+                            }
+                        })
+                            .then(function (response) {
+                                if (response.data !== null && response.data !== "") {
+                                    that.tableData = response.data;
+                                    that.total=response.data.length;
+                                } else {
+                                    that.tableData = [];
+                                    console.log("加载失败");
+                                }
+                            })
+                            .catch(function (error) {
+                                alert(error);
+                            });
+                    }
+                },
+                pageChange(pageNumber){
+                    this.currentpage=pageNumber;
+                    this.view();
+                },
+            },
+            created() {
+                this.init();
+                this.view();
+            },
+            template:"<el-main><div><searchbar :search-list='searchlist' :default_search='default_search' @search='search'></searchbar></div>" +
+                "<el-table :data='tableData'></el-table-column><el-table-column v-for='(item,index) in columnlist' :prop='item.en' :label='item.cn' :key='index'></el-table-column></el-table><paginationbar :total='total' :pagesize='pagesize' :currentpage='currentpage' @pageChange='pageChange'></paginationbar></el-main>"
+        })
+        var record_list=Vue.component('record_list',{
+            template:'<el-submenu index="4"><template slot="title">记录查询</template><el-menu-item-group><el-menu-item index="IR_info">入库记录</el-menu-item><el-menu-item index="TR_info">转库记录</el-menu-item><el-menu-item index="OR_info">出库记录</el-menu-item><el-menu-item index="C_Iinfo_info">库存信息修改记录</el-menu-item><el-menu-item index="C_shelfinfo_info">在售商品修改记录</el-menu-item></el-menu-item-group></el-submenu>'
+        })
+        var IR_info = Vue.component('IR_info',{
+            data(){
+                return{
+                    fullData:[],
+                    tableData:[],
+                    table_type:"IR",
+                    searchlist:['批次号','商品条码','仓库编号','供货商编号','店员编号'],
+                    default_search:"批次号",
+                    columnlist:[
+                        {en:'BNo',cn:'批次号'},
+                        {en:'GNo',cn:'商品条码'},
+                        {en:'WNo',cn:'仓库编号'},
+                        {en:'SNo',cn:'供货商编号'},
+                        {en:'ENo',cn:'店员编号'},
+                        {en:'Num',cn:'数量'},
+                        {en:'Time',cn:'时间'}
+                    ],
+                    total:0,
+                    pagesize:10,
+                    currentpage:1
+                }
+            },
+            methods:{
+                init(){
+                    var that = this;
+                    axios({
+                        method: 'post',
+                        url: '/irQuery/init',
+                    })
+                        .then(function (response) {
+                            if (response.data != null) {
+                                that.total=response.data;
+                            }
+                            else
+                                console.log("加载失败");
+                        })
+                        .catch(function (error) {
+                            alert(error);
+                        });
+                },
+                view(){
+                    var that = this;
+                    axios({
+                        method: 'post',
+                        url: '/irQuery/view',
+                        data:{
+                            limit:10,
+                            offset:(that.currentpage-1)*10
+                        }
+                    })
+                        .then(function (response) {
+                            if (response.data != null) {
+                                console.log(response.data);
+                                that.tableData= response.data;
+                            }
+                            else
+                                console.log("加载失败");
+                        })
+                        .catch(function (error) {
+                            alert(error);
+                        });
+                },
+                search(val){
+                    let stype=val[0];
+                    let stext=val[1];
+                    let tag=1;
+                    if(stext===""){
+                        that.view();
+                        tag=0;
+                    }
+                    if(tag) {
+                        var that = this;
+                        axios({
+                            method: 'post',
+                            url: '/irQuery/search',
+                            data: {
+                                type: stype,
+                                text: stext
+                            }
+                        })
+                            .then(function (response) {
+                                if (response.data !== null && response.data !== "") {
+                                    that.tableData = response.data;
+                                } else {
+                                    that.tableData = [];
+                                    console.log("加载失败");
+                                }
+                            })
+                            .catch(function (error) {
+                                alert(error);
+                            });
+                    }
+                },
+                pageChange(pageNumber){
+                    this.currentpage=pageNumber;
+                    this.view();
+                },
+            },
+            created() {
+                this.init();
+                this.view();
+            },
+            template:"<el-main><div><searchbar :search-list='searchlist' :default_search='default_search' @search='search'></searchbar></div>" +
+                "<el-table :data='tableData'></el-table-column><el-table-column v-for='(item,index) in columnlist' :prop='item.en' :label='item.cn' :key='index'></el-table-column></el-table><paginationbar :total='total' :pagesize='pagesize' :currentpage='currentpage' @pageChange='pageChange'></paginationbar></el-main>"
+        })
+        var TR_info = Vue.component('TR_info',{
+            data(){
+                return{
+                    fullData:[],
+                    tableData:[],
+                    table_type:"TR",
+                    searchlist:['商品条码','原仓库编号','目标仓库编号','店员编号'],
+                    default_search:"销售单号",
+                    columnlist:[
+                        {en:'GNo',cn:'商品条码'},
+                        {en:'fromWNo',cn:'原仓库编号'},
+                        {en:'toWNo',cn:'目标仓库编号'},
+                        {en:'ENo',cn:'店员编号'},
+                        {en:'Num',cn:'数量'},
+                        {en:'Time',cn:'时间'},
+                    ],
+                    total:0,
+                    pagesize:10,
+                    currentpage:1
+                }
+            },
+            methods:{
+                init(){
+                    var that = this;
+                    axios({
+                        method: 'post',
+                        url: '/trQuery/init',
+                    })
+                        .then(function (response) {
+                            if (response.data != null) {
+                                that.total=response.data;
+                            }
+                            else
+                                console.log("加载失败");
+                        })
+                        .catch(function (error) {
+                            alert(error);
+                        });
+                },
+                view(){
+                    var that = this;
+                    axios({
+                        method: 'post',
+                        url: '/trQuery/view',
+                        data:{
+                            limit:10,
+                            offset:(that.currentpage-1)*10
+                        }
+                    })
+                        .then(function (response) {
+                            if (response.data != null) {
+                                console.log(response.data);
+                                that.tableData= response.data;
+                            }
+                            else
+                                console.log("加载失败");
+                        })
+                        .catch(function (error) {
+                            alert(error);
+                        });
+                },
+                search(val){
+                    let stype=val[0];
+                    let stext=val[1];
+                    let tag=1;
+                    if(stext===""){
+                        that.view();
+                    }
+                    if(tag) {
+                        var that = this;
+                        axios({
+                            method: 'post',
+                            url: '/trQuery/search',
+                            data: {
+                                type: stype,
+                                text: stext
+                            }
+                        })
+                            .then(function (response) {
+                                if (response.data !== null && response.data !== "") {
+                                    that.tableData = response.data;
+                                } else {
+                                    that.tableData = [];
+                                    console.log("加载失败");
+                                }
+                            })
+                            .catch(function (error) {
+                                alert(error);
+                            });
+                    }
+                },
+                pageChange(pageNumber){
+                    this.currentpage=pageNumber;
+                    this.view();
+                },
+            },
+            created() {
+                this.init();
+                this.view();
+            },
+            template:"<el-main><div><searchbar :search-list='searchlist' :default_search='default_search' @search='search'></searchbar></div>" +
+                "<el-table :data='tableData'></el-table-column><el-table-column v-for='(item,index) in columnlist' :prop='item.en' :label='item.cn' :key='index'></el-table-column></el-table><paginationbar :total='total' :pagesize='pagesize' :currentpage='currentpage' @pageChange='pageChange'></paginationbar></el-main>"
+        })
+        var OR_info = Vue.component('OR_info',{
+            data(){
+                return{
+                    fullData:[],
+                    tableData:[],
+                    table_type:"OR",
+                    searchlist:['商品条码','仓库编号','店员编号'],
+                    default_search:"商品条码",
+                    columnlist:[
+                        {en:'GNo',cn:'商品条码'},
+                        {en:'WNo',cn:'仓库编号'},
+                        {en:'ENo',cn:'店员编号'},
+                        {en:'Num',cn:'数量'},
+                        {en:'Time',cn:'时间'}
+                    ],
+                    total:0,
+                    pagesize:10,
+                    currentpage:1
+                }
+            },
+            methods:{
+                init(){
+                    var that = this;
+                    axios({
+                        method: 'post',
+                        url: '/orQuery/init',
+                        data: {
+                            type:"init"
+                        }
+                    })
+                        .then(function (response) {
+                            if (response.data != null) {
+                                that.total=response.data;
+                            }
+                            else
+                                console.log("加载失败");
+                        })
+                        .catch(function (error) {
+                            alert(error);
+                        });
+                },
+                view(){
+                    var that = this;
+                    axios({
+                        method: 'post',
+                        url: '/orQuery/view',
+                        data:{
+                            limit:10,
+                            offset:(that.currentpage-1)*10
+                        }
+                    })
+                        .then(function (response) {
+                            if (response.data != null) {
+                                console.log(response.data);
+                                that.tableData= response.data;
+                            }
+                            else
+                                console.log("加载失败");
+                        })
+                        .catch(function (error) {
+                            alert(error);
+                        });
+                },
+                search(val){
+                    let stype=val[0];
+                    let stext=val[1];
+                    let tag=1;
+                    if(stext===""){
+                        that.view();
+                    }
+                    if(tag) {
+                        var that = this;
+                        axios({
+                            method: 'post',
+                            url: '/orQuery/search',
+                            data: {
+                                type: stype,
+                                text: stext
+                            }
+                        })
+                            .then(function (response) {
+                                if (response.data !== null && response.data !== "") {
+                                    that.tableData = response.data;
+                                } else {
+                                    that.tableData = [];
+                                    console.log("加载失败");
+                                }
+                            })
+                            .catch(function (error) {
+                                alert(error);
+                            });
+                    }
+                },
+                pageChange(pageNumber){
+                    this.currentpage=pageNumber;
+                    this.view();
+                },
+            },
+            created() {
+                this.init();
+                this.view();
+            },
+            template:"<el-main><div><searchbar :search-list='searchlist' :default_search='default_search' @search='search'></searchbar></div>" +
+                "<el-table :data='tableData'></el-table-column><el-table-column v-for='(item,index) in columnlist' :prop='item.en' :label='item.cn' :key='index'></el-table-column></el-table><paginationbar :total='total' :pagesize='pagesize' :currentpage='currentpage' @pageChange='pageChange'></paginationbar></el-main>"
+        })
+        var C_Iinfo_info = Vue.component('C_Iinfo_info',{
+            data(){
+                return{
+                    fullData:[],
+                    tableData:[],
+                    table_type:"C_Iinfo",
+                    searchlist:['店员编号'],
+                    default_search:"店员编号",
+                    columnlist:[
+                        {en:'ENo',cn:'店员编号'},
+                        {en:'Time',cn:'时间'},
+                        {en:'Content',cn:'内容'}
+                    ],
+                    total:0,
+                    pagesize:10,
+                    currentpage:1
+                }
+            },
+            methods:{
+                init(){
+                    var that = this;
+                    axios({
+                        method: 'post',
+                        url: '/inventoryChangeQuery/init',
+                    })
+                        .then(function (response) {
+                            if (response.data != null) {
+                                that.total=response.data;
+                            }
+                            else
+                                console.log("加载失败");
+                        })
+                        .catch(function (error) {
+                            alert(error);
+                        });
+                },
+                view(){
+                    var that = this;
+                    axios({
+                        method: 'post',
+                        url: '/inventoryChangeQuery/view',
+                        data:{
+                            limit:10,
+                            offset:(that.currentpage-1)*10
+                        }
+                    })
+                        .then(function (response) {
+                            if (response.data != null) {
+                                console.log(response.data);
+                                that.tableData= response.data;
+                            }
+                            else
+                                console.log("加载失败");
+                        })
+                        .catch(function (error) {
+                            alert(error);
+                        });
+                },
+                search(val){
+                    let stype=val[0];
+                    let stext=val[1];
+                    let tag=1;
+                    if(stext===""){
+                        that.view();
+                        tag=0;
+                    }
+                    if(tag) {
+                        var that = this;
+                        axios({
+                            method: 'post',
+                            url: '/inventoryChangeQuery/search',
+                            data: {
+                                type: stype,
+                                text: stext
+                            }
+                        })
+                            .then(function (response) {
+                                if (response.data !== null && response.data !== "") {
+                                    that.tableData = response.data;
+                                } else {
+                                    that.tableData = [];
+                                    console.log("加载失败");
+                                }
+                            })
+                            .catch(function (error) {
+                                alert(error);
+                            });
+                    }
+                },
+                pageChange(pageNumber){
+                    this.currentpage=pageNumber;
+                    this.view();
+                },
+            },
+            created() {
+                this.init()
+                this.view();
+            },
+            template:"<el-main><div><searchbar :search-list='searchlist' :default_search='default_search' @search='search'></searchbar></div>" +
+                "<el-table :data='tableData'></el-table-column><el-table-column v-for='(item,index) in columnlist' :prop='item.en' :label='item.cn' :key='index'></el-table-column></el-table><paginationbar :total='total' :pagesize='pagesize' :currentpage='currentpage' @pageChange='pageChange'></paginationbar></el-main>"
+        })
+        var C_shelfinfo_info = Vue.component('C_shelfinfo_info',{
+            data(){
+                return{
+                    fullData:[],
+                    tableData:[],
+                    table_type:"C_shelfinfo",
+                    searchlist:['店员编号'],
+                    default_search:"店员编号",
+                    columnlist:[
+                        {en:'ENo',cn:'店员编号'},
+                        {en:'Time',cn:'时间'},
+                        {en:'Content',cn:'内容'}
+                    ],
+                    total:0,
+                    pagesize:10,
+                    currentpage:1
+                }
+            },
+            methods:{
+                init(){
+                    var that = this;
+                    axios({
+                        method: 'post',
+                        url: '/shelfChangeQuery/init',
+                        data: {
+                            type:"init"
+                        }
+                    })
+                        .then(function (response) {
+                            if (response.data != null) {
+                                that.total=response.data;
+                            }
+                            else
+                                console.log("加载失败");
+                        })
+                        .catch(function (error) {
+                            alert(error);
+                        });
+                },
+                view(){
+                    var that = this;
+                    axios({
+                        method: 'post',
+                        url: '/shelfChangeQuery/view',
+                        data:{
+                            limit:10,
+                            offset:(that.currentpage-1)*10
+                        }
+                    })
+                        .then(function (response) {
+                            if (response.data != null) {
+                                console.log(response.data);
+                                that.tableData= response.data;
+                            }
+                            else
+                                console.log("加载失败");
+                        })
+                        .catch(function (error) {
+                            alert(error);
+                        });
+                },
+                search(val){
+                    let stype=val[0];
+                    let stext=val[1];
+                    let tag=1;
+                    if(stext===""){
+                        that.view();
+                        tag=0;
+                    }
+                    if(tag) {
+                        var that = this;
+                        axios({
+                            method: 'post',
+                            url: '/shelfChangeQuery/search',
+                            data: {
+                                type: stype,
+                                text: stext
+                            }
+                        })
+                            .then(function (response) {
+                                if (response.data !== null && response.data !== "") {
+                                    that.tableData = response.data;
+                                } else {
+                                    that.tableData = [];
+                                    console.log("加载失败");
+                                }
+                            })
+                            .catch(function (error) {
+                                alert(error);
+                            });
+                    }
+                },
+                pageChange(pageNumber){
+                    this.currentpage=pageNumber;
+                    this.view();
+                },
+            },
+            created() {
+                this.init();
+                this.view();
+            },
+            template:"<el-main><div><searchbar :search-list='searchlist' :default_search='default_search' @search='search'></searchbar></div>" +
+                "<el-table :data='tableData'></el-table-column><el-table-column v-for='(item,index) in columnlist' :prop='item.en' :label='item.cn' :key='index'></el-table-column></el-table><paginationbar :total='total' :pagesize='pagesize' :currentpage='currentpage' @pageChange='pageChange'></paginationbar></el-main>"
+        })
+        var storage = Vue.component('storage',{
+            data(){
+                return{
+                    fullData:[],
+                    tableData:[],
+                    table_type:"storage",
+                    add_Visible:false,
+                    fileList:[],
+                    sub_Visible:false,
+                    sub_Name:[],
+                    searchlist:['文件名'],
+                    default_search:"文件名",
+                    total:0,
+                    pagesize:10,
+                    currentpage:1,
+                    filepath:""
+                }
+            },
+            methods:{
+                init(){
+                    var that = this;
+                    axios({
+                        method: 'post',
+                        url: '/storage/init',
+                    })
+                        .then(function (response) {
+                            if (response.data != null) {
+                                that.total=response.data;
+                            }
+                            else
+                                console.log("加载失败");
+                        })
+                        .catch(function (error) {
+                            alert(error);
+                        });
+                    this.view();
+                },
+                view(){
+                    var that = this;
+                    axios({
+                        method: 'post',
+                        url: '/storage/view',
+                        data:{
+                            limit:10,
+                            offset:(that.currentpage-1)*10
+                        }
+                    })
+                        .then(function (response) {
+                            if (response.data != null) {
+                                that.tableData= response.data;
+                            }
+                            else
+                                console.log("加载失败");
+                        })
+                        .catch(function (error) {
+                            alert(error);
+                        });
+                },
+                open_add(){
+                    this.add_Visible=true;
+                },
+                upload(){
+                    this.$refs.upload.submit();
+                },
+                uploadrecord(response, file, fileList){
+                    var filelist=[];
+                    for (let len=0;len<fileList.length;len++){
+                        filelist.push(fileList[len].name);
+                    }
+                    var that = this;
+                    console.log(filelist);
+                    axios({
+                        method: 'post',
+                        url: '/storage/record',
+                        data:{
+                            names:filelist,
+                            uploader_no:sessionStorage.getItem("eno")
+                        }
+                    })
+                        .then(function (response) {
+                            if (response.data != null) {
+                                that.view();
+                            }
+                            else
+                                console.log("加载失败");
+                        })
+                        .catch(function (error) {
+                            alert(error);
+                        });
+                },
+                sublist(event){
+                    let i;
+                    var that = this;
+                    this.sub_Name=[];
+                    for(i=0;i<event.length;i++){
+                        that.sub_Name.push(event[i]["filename"]);
+                    }
+                },
+                sub(){
+                    var that=this;
+                    axios({
+                        method: 'post',
+                        url: '/storage/sub',
+                        data: {
+                            list:that.sub_Name,
+                            length:that.sub_Name.length
+                        }
+                    })
+                        .then(function (response) {
+                            if (response.data===true) {
+                                that.view();
+                            }
+                            else
+                                console.log(response.data);
+                        })
+                        .catch(function (error) {
+                            alert(error);
+                        });
+                    this.view();
+                },
+                search(val){
+                    let stype=val[0];
+                    let stext=val[1];
+                    let tag=1;
+                    if(stext===""){
+                        that.view();
+                    }
+                    else{
+                        var that = this;
+                        axios({
+                            method: 'post',
+                            url: '/storage/search',
+                            data: {
+                                type: stype,
+                                text: stext,
+                                limit:10,
+                                offset:(that.currentpage-1)*10
+                            }
+                        })
+                            .then(function (response) {
+                                if (response.data !== null && response.data !== "") {
+                                    that.tableData = response.data;
+                                    that.total=response.data.length;
+                                } else {
+                                    that.tableData = [];
+                                    console.log("加载失败");
+                                }
+                            })
+                            .catch(function (error) {
+                                alert(error);
+                            });
+                    }
+                },
+                pageChange(pageNumber){
+                    this.currentpage=pageNumber;
+                    this.view();
+                },
+                openfile(row){
+                    window.open(row.filepath);
+                }
+            },
+            created() {
+                this.init();
+                this.view();
+            },
+            template:"<el-main><div><searchbar :search-list='searchlist' :default_search='default_search' @search='search'>" +
+                "</searchbar><as_btn_group :table_type='table_type' @add='open_add()' @sub='sub_Visible=true'></as_btn_group>" +
+                "</div><el-table ref='table' :data='tableData' @selection-change='sublist($event)'>" +
+                "<el-table-column type='selection' ></el-table-column><el-table-column prop='filename' label='文件名'>" +
+                "</el-table-column><el-table-column prop='EName' label='上传者'></el-table-column>" +
+                "<el-table-column label='下载'><span slot-scope='scope'><el-button @click='openfile(scope.row)'>打开</el-button></span></el-table-column></el-table>" +
+                "<paginationbar :total='total' :pagesize='pagesize' :currentpage='currentpage' @pageChange='pageChange'></paginationbar>"+
+                "<el-dialog :visible.sync='sub_Visible'>确认要删除吗？<span slot='footer' class='dialog-footer'>" +
+                "<el-button @click='sub_Visible = false'>取消</el-button><el-button type='primary' @click='sub_Visible = false,sub()'>确定</el-button>" +
+                "</span></el-dialog><el-dialog title='文件上传' :visible.sync='add_Visible'>" +
+                "<el-upload class='upload-demo' ref='upload' action='/storage/upload' :file-list='fileList' :auto-upload='false' :on-success='uploadrecord'>\n" +
+                "<el-button slot='trigger' size='small' type='primary'>选取文件</el-button>\n" +
+                "<el-button style='margin-left: 10px;' size='small' type='success' @click='upload'>上传到服务器</el-button>\n" +
+                "</el-upload>" +
+                "<span slot='footer' class='dialog-footer'>" +
+                "<el-button type='primary' @click='add_Visible = false'>确定</el-button></span></el-dialog></el-main>"
+        })
+        var router = new VueRouter({
+            routes : [
+                { path: '*', redirect: '/general_view' },
+                { path: '/general_view', component: general_view },
+                { path: '/supplier_info', component: supplier_info },
+                { path: '/goods_info', component: goods_info },
+                { path: '/customer_info', component: customer_info },
+                { path: '/employee_info', component: employee_info },
+                { path: '/inventory_info', component: inventory_info },
+                { path: '/shelf_info', component: shelf_info },
+                { path: '/SR_info', component: SR_info },
+                { path: '/IR_info', component: IR_info },
+                { path: '/TR_info', component: TR_info },
+                { path: '/OR_info', component: OR_info },
+                { path: '/C_Iinfo_info', component: C_Iinfo_info },
+                { path: '/C_shelfinfo_info', component: C_shelfinfo_info },
+                { path: '/storage', component: storage}
+            ]
+        })
+        var app = new Vue ({
+            el:"#app",
+            router:router,
+            route:Object,
+            data: function () {
+                return {
+                    title:sessionStorage.getItem("title")
+                }
+            }
+        })
+    </script>
+</body>
+</html>
