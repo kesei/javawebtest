@@ -1,2 +1,2 @@
 # yikeerp
-Vue.js+SSM的进销存管理系统
+Vue.js+Springboot的进销存管理系统
